@@ -1,5 +1,8 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import seedRouter from './routes/seedRoutes.js';
 import productRouter from './routes/productRoutes.js';
 import userRouter from './routes/userRoutes.js';
@@ -7,30 +10,18 @@ import orderRouter from './routes/orderRoutes.js';
 import uploadRouter from './routes/uploadRoutes.js';
 import cors from 'cors';
 import morgan from 'morgan';
-import mongoose from 'mongoose';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-dotenv.config({ path: './config.env' });
-const app = express();
-
+// ES module fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// MongoDB Connection with better error handling
-mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log('✅ Connected to MongoDB Successfully');
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB Connection Error:', err.message);
-    process.exit(1);
-  });
+// Load environment variables from config.env
+dotenv.config({ path: path.join(__dirname, 'config.env') });
 
+// Initialize express
+const app = express();
+
+// Middleware
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
@@ -52,19 +43,53 @@ app.get('/api/keys/google', (req, res) => {
   res.send({ key: process.env.GOOGLE_API_KEY || '' });
 });
 
-// Serve static files from the uploads directory
+// Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Enhanced error handling middleware
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  // Set static folder
+  const frontendBuildPath = path.join(__dirname, '../frontend/build');
+  app.use(express.static(frontendBuildPath));
+
+  // Any route that is not an API route will be redirected to index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.send('API is running...');
+  });
+}
+
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('❌ Error:', err);
-  res.status(500).send({
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  res.status(statusCode);
+  res.json({
     message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : '🔒',
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
   });
 });
 
-const port = process.env.PORT || 5000;
-app.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
-});
+// Connect to MongoDB and start server
+const PORT = process.env.PORT || 5000;
+
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(
+        `Server running in ${process.env.NODE_ENV} mode on port ${PORT}`
+      );
+    });
+  })
+  .catch((err) => {
+    console.error(`Error connecting to MongoDB: ${err.message}`);
+    process.exit(1);
+  });
+
+// Log environment for debugging
+console.log(
+  `Server running in ${process.env.NODE_ENV} mode on port ${process.env.PORT}`
+);
