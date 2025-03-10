@@ -11,29 +11,51 @@ export const getProduct = async (req, res) => {
 
 export const createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
-    if (product) {
-      product.name = req.body.name;
-      product.slug = req.body.slug;
-      product.price = req.body.price;
-      product.image = req.body.image;
-      product.images = req.body.images;
-      product.category = req.body.category;
-      product.brand = req.body.brand;
-      product.rating = req.body.rating || 0;
-      product.numReviews = req.body.numReviews || 0;
-      product.countInStock = req.body.countInStock;
-      product.description = req.body.description;
-      await product.save();
-      res.send({ message: 'Product Created', product: product });
-    } else {
-      res.status(404).send({ message: 'Product can not be created' });
+    const {
+      name,
+      price,
+      description,
+      image,
+      brand,
+      category,
+      countInStock,
+      numReviews,
+      rating: formRating, // Rename to avoid conflict
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !price || !category || !countInStock) {
+      return res
+        .status(400)
+        .json({ message: 'Please provide all required fields' });
     }
+
+    // Generate a slug from the product name
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    // Create the product with all required fields
+    const product = new Product({
+      name,
+      slug, // Add the generated slug
+      price,
+      user: req.user._id,
+      image: image || '/images/sample.jpg', // Provide a default image if none is uploaded
+      brand,
+      category,
+      countInStock,
+      rating: Number(formRating) || 0, // Convert to number and provide default
+      numReviews: Number(numReviews) || 0,
+      description,
+    });
+
+    const createdProduct = await product.save();
+    res.status(201).json(createdProduct);
   } catch (error) {
-    res
-      .status(500)
-      .send({ message: 'Internal Server Error', error: error.message });
-    console.error(error, 'tuka e problemot');
+    console.warn(error);
+    res.status(500).json({ message: 'Error creating product' });
   }
 };
 

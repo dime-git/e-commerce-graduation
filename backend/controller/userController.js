@@ -169,14 +169,30 @@ export const userSignin = async (req, res) => {
 
 export const userSignup = async (req, res) => {
   try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: req.body.email });
+    if (existingUser) {
+      return res
+        .status(400)
+        .send({ message: 'User with this email already exists' });
+    }
+
+    // Validate required fields
+    if (!req.body.name || !req.body.email || !req.body.password) {
+      return res
+        .status(400)
+        .send({ message: 'Name, email, and password are required' });
+    }
+
     const newUser = new User({
       name: req.body.name,
       email: req.body.email,
       password: bcrypt.hashSync(req.body.password),
-      isAdmin: req.body.isAdmin,
+      isAdmin: false, // Default to false for security
     });
+
     const user = await newUser.save();
-    res.send({
+    res.status(201).send({
       _id: user._id,
       name: user.name,
       email: user.email,
@@ -184,6 +200,14 @@ export const userSignup = async (req, res) => {
       token: generateToken(user),
     });
   } catch (error) {
-    res.status(500).send({ message: 'Internal Server Error' });
+    console.error('Signup Error:', error);
+    if (error.name === 'ValidationError') {
+      res.status(400).send({ message: error.message });
+    } else {
+      res.status(500).send({
+        message: 'Error creating user',
+        error: error.message,
+      });
+    }
   }
 };

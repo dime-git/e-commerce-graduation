@@ -46,28 +46,19 @@ export default function HomeScreen() {
       <Helmet>
         <title>Brendy</title>
       </Helmet>
-      <h1>Featured Products</h1>
-      <div className='products'>
-        {loading ? (
-          <LoadingBox />
-        ) : error ? (
-          <MessageBox variant='danger'>{error}</MessageBox>
-        ) : (
-          <Row>
-            {products.map((product) => (
-              <Col key={product.slug} sm={6} md={4} lg={3} className='mb-3'>
-                <Product
-                  product={product}
-                  style={{
-                    width: '200px',
-                    height: '200px',
-                  }}
-                ></Product>
-              </Col>
-            ))}
-          </Row>
-        )}
-      </div>
+      <h1 className='section-title'>Featured Products</h1>
+
+      {loading ? (
+        <LoadingBox />
+      ) : error ? (
+        <MessageBox variant='danger'>{error}</MessageBox>
+      ) : (
+        <div className='products'>
+          {products.map((product) => (
+            <Product key={product.slug} product={product} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

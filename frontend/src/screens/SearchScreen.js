@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import React, { useEffect, useReducer, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -28,7 +28,6 @@ const reducer = (state, action) => {
       };
     case 'FETCH_FAIL':
       return { ...state, loading: false, error: action.payload };
-
     default:
       return state;
   }
@@ -98,7 +97,7 @@ export default function SearchScreen() {
       } catch (err) {
         dispatch({
           type: 'FETCH_FAIL',
-          payload: getError(error),
+          payload: getError(err),
         });
       }
     };
@@ -118,17 +117,43 @@ export default function SearchScreen() {
     fetchCategories();
   }, [dispatch]);
 
-  const getFilterUrl = (filter, skipPathname) => {
+  const getFilterUrl = (filter) => {
     const filterPage = filter.page || page;
     const filterCategory = filter.category || category;
     const filterQuery = filter.query || query;
     const filterRating = filter.rating || rating;
     const filterPrice = filter.price || price;
     const sortOrder = filter.order || order;
-    return `${
-      skipPathname ? '' : '/search?'
-    }category=${filterCategory}&query=${filterQuery}&price=${filterPrice}&rating=${filterRating}&order=${sortOrder}&page=${filterPage}`;
+    return `/search?category=${filterCategory}&query=${filterQuery}&price=${filterPrice}&rating=${filterRating}&order=${sortOrder}&page=${filterPage}`;
   };
+
+  // Helper function to get rating text
+  const getRatingText = (rating) => {
+    switch (rating) {
+      case '4':
+        return '4 stars & up';
+      case '3':
+        return '3 stars & up';
+      case '2':
+        return '2 stars & up';
+      case '1':
+        return '1 star & up';
+      default:
+        return 'All ratings';
+    }
+  };
+
+  // Helper function to check if a filter is active
+  const isFilterActive = (filter) => {
+    return (
+      filter.category === category ||
+      filter.query === query ||
+      filter.price === price ||
+      filter.rating === rating ||
+      filter.order === order
+    );
+  };
+
   return (
     <div>
       <Helmet>
@@ -268,7 +293,7 @@ export default function SearchScreen() {
                     className='mx-1'
                     to={{
                       pathname: '/search',
-                      seacrh: getFilterUrl({ page: x + 1 }, true),
+                      seacrh: getFilterUrl({ page: x + 1 }),
                     }}
                   >
                     <Button
